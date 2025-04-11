@@ -1,0 +1,76 @@
+@page "/"
+
+@using FantasyCrypto.Components.Pages.ViewModels
+@using FantasyCrypto.Core.Dtos
+@using FantasyCrypto.Services.Interfaces
+
+@inject ICoinGeckoService CoinGeckoService
+
+<PageTitle>All Crypto Coins</PageTitle>
+
+<div class="d-flex justify-content-center mt-4">
+    <RadzenCard Style="width: 100%; max-width: 1200px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px;">
+        <RadzenHeading Size="H4" Text="All Crypto Coins"/>
+
+        <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
+            <RadzenTextBox 
+                @bind-Value="@viewModel.SearchText"
+                Placeholder="Search by name or symbol..." 
+                Style="width: 400px" />
+            <RadzenButton Text="@(viewModel.IsSearching ? "Searching..." : "Search")" Click="@OnSearchClicked" />
+        </div>
+
+        <RadzenDataGrid Data="@viewModel.FilteredCoinList"
+                        TItem="CoinGeckoCoinDto"
+                        AllowPaging="true"
+                        PageSize="100"
+                        AllowSorting="true"
+                        AllowFiltering="true"
+                        ColumnWidth="120px"
+                        ScrollMode="DataGridScrollMode.Scrollable"
+                        Style="height: 760px;"
+                        ExpandMode="DataGridExpandMode.Single">
+
+            <Columns>
+                <RadzenDataGridColumn TItem="CoinGeckoCoinDto" Property="CoinGeckoCoinDbId" Title="ID"/>
+                <RadzenDataGridColumn TItem="CoinGeckoCoinDto" Property="Name" Title="Name"/>
+                <RadzenDataGridColumn TItem="CoinGeckoCoinDto" Property="Symbol" Title="Symbol"/>
+            </Columns>
+
+        </RadzenDataGrid>
+    </RadzenCard>
+</div>
+
+@code {
+    
+    private readonly AllCryptoViewModel viewModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        viewModel.CoinList = await CoinGeckoService.GetAllAsync();
+        viewModel.FilteredCoinList = viewModel.CoinList.ToList();
+    }
+    
+    private async Task OnSearchClicked()
+    {
+        viewModel.IsSearching = true;
+        StateHasChanged();
+        
+        await Task.Delay(1000);
+        
+        if (string.IsNullOrWhiteSpace(viewModel.SearchText))
+        {
+            viewModel.FilteredCoinList = viewModel.CoinList.ToList();
+            return;
+        }
+
+        viewModel.FilteredCoinList = viewModel.CoinList
+            .Where(c =>
+                (!string.IsNullOrEmpty(c.Name) && c.Name.Contains(viewModel.SearchText, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Symbol) && c.Symbol.Contains(viewModel.SearchText, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        viewModel.IsSearching = false;
+        StateHasChanged();
+    }
+}
